@@ -3,6 +3,8 @@ from selenium.webdriver.common.by import By
 from os import makedirs, listdir
 from selenium.common.exceptions import NoSuchElementException
 makedirs('search_results', exist_ok=True)
+with open('.gitignore', 'w') as ignore:
+    ignore.writelines('search_results/\n')
 nums = []
 files = listdir('search_results')
 for i in files:
