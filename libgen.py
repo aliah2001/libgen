@@ -1,48 +1,57 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from os import makedirs, listdir
-from selenium.common.exceptions import NoSuchElementException
-makedirs('search_results', exist_ok=True)
+from webdrivermanager import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import NoSuchElementException, WebDriverException
+from os import makedirs, listdir, remove
+from os.path import getsize
+
+search_word = input('what is it you are searching? \t')
+# to ignore search results for git
 with open('.gitignore', 'w') as ignore:
     ignore.writelines('search_results/\n')
+
+# to find the last tab if it's not the first time we are searching for this word
 nums = []
-files = listdir('search_results')
-for i in files:
-    if 'txt' in i:
-        nums.append(int(i[:i.find('_')]))
-        nums.sort()
-if len(nums) != 0:
-    last_tab = nums[-1]
-else:
+try:
+    files = listdir(f'search_results/{search_word}')
+    for i in files:
+        if 'txt' in i and i.find('_') > 0:
+            nums.append(int(i[:i.find('_')]))
+            nums.sort()
+    if len(nums) != 0:
+        last_tab = nums[-1]
+    else:
+        last_tab = 0
+    print(f'last tab was {last_tab}')
+except (FileNotFoundError, ValueError):
     last_tab = 0
-print(f'last tab was {last_tab}')
 urls = ['https://libgen.rs/', 'https://libgen.is/', 'https://libgen.st/']
 search_url = 'search.php?req='
-search_word = 'aviation'
+
 tab_num = f'&page={last_tab+1}'
 ch = webdriver.ChromeOptions()
 op = ch.add_argument('--headless')
-browser = webdriver.Chrome(options=op)
+# service=Service(ChromeDriverManager().download_and_install()[0]),
+browser = webdriver.Chrome(chrome_options=op)
 browser.set_script_timeout(20000)
 browser.set_page_load_timeout(20000)
 for i in urls:
     try:
         browser.get(i+search_url+search_word+tab_num)
-        break
-    except TimeoutError:
-        pass
-
+    except (TimeoutError, WebDriverException):
+        continue
+    break
 # got into the site using the search word
 page_source = browser.page_source
 find_n = '<font color="grey" size="1">'
-last_find_n = ' files found | showing results from '
+last_find_n = ' files found'
 number_of_results = int(page_source[page_source.find(find_n) + len(find_n): page_source.find(last_find_n)])
-number_of_tabs = number_of_results//25+1
+number_of_tabs = number_of_results//25
+if number_of_results % 25 > 0:
+    number_of_tabs += 1
 print(f'number of results: {number_of_results} \nnumber of tabs: {number_of_tabs}')
-if last_tab == number_of_tabs:
-    print('It\'s over.')
-    browser.close()
-    exit()
+
 # now we know how many results are ready
 
 
@@ -50,10 +59,10 @@ def change_tab():
     current_url = browser.current_url
     tab_url = current_url[0:current_url.find('page')+5]
     current_tab = int(current_url[current_url.find('page')+5:])
-    print(f'current tab: {current_tab}')
+    print(f'last tab was: {current_tab}')
     next_tab = current_tab + 1
     browser.get(tab_url + str(next_tab))
-    print(f'tab changed to tab number {next_tab}')
+    print(f'tab changed to tab: {next_tab}')
 
 # now we can use this function to change tabs
 
@@ -71,7 +80,14 @@ result_dic = [
         "Extension",
         "link_page_to_download"
 ]
-while True:
+last_results = []
+tab_number = int(tab_num[6:])
+makedirs(f'search_results/{search_word}', exist_ok=True)
+
+while tab_number <= number_of_tabs:
+    tab_number = int(browser.current_url[browser.current_url.find('page')+5:])
+    if tab_number > number_of_tabs:
+        break
     results = []
     table_id = browser.find_element(By.CLASS_NAME, 'c')
     rows = table_id.find_elements(By.TAG_NAME, "tr")
@@ -97,15 +113,18 @@ while True:
         results.append(result)
         browser.back()
         print(result)
-    tab_number = int(browser.current_url[browser.current_url.find('page')+5:])
-    with open(f'search_results\\{tab_number}_{search_word}.txt', 'w', encoding='utf8') as txt:
+    with open(f'search_results/{search_word}/{tab_number}_{search_word}.txt', 'w', encoding='utf8') as txt:
         for i in results:
+            last_results.append(i)
             txt.writelines(str(i) + '\n')
-    if tab_number == number_of_tabs:
-        break
     change_tab()
-
-with open(f'\\search_results\\{search_word}.txt', 'w') as txt:
-    for i in results:
-        txt.writelines(str(i) + '\n')
+try:
+    if getsize(f'search_results/{search_word}/{search_word}.txt') == 0:
+        remove(f'search_results/{search_word}')
+        print(f'Please restart the program')
+except FileNotFoundError:
+    with open(f'search_results/{search_word}/{search_word}.txt', 'w+', encoding='utf8') as txt:
+        for i in last_results:
+            txt.writelines(str(i) + '\n')
+print(f'results saved in search_results\\{search_word}\\')
 # we have results now
