@@ -26,7 +26,7 @@ except (FileNotFoundError, ValueError):
     last_tab = 0
 urls = ['https://libgen.rs/', 'https://libgen.is/', 'https://libgen.st/']
 search_url = 'search.php?req='
-
+number_of_results = '&res=100'
 tab_num = f'&page={last_tab+1}'
 ch = webdriver.ChromeOptions()
 op = ch.add_argument('--headless')
@@ -36,7 +36,7 @@ browser.set_script_timeout(20000)
 browser.set_page_load_timeout(20000)
 for i in urls:
     try:
-        browser.get(i+search_url+search_word+tab_num)
+        browser.get(i+search_url+search_word+number_of_results+tab_num)
     except (TimeoutError, WebDriverException):
         continue
     break
@@ -45,8 +45,8 @@ page_source = browser.page_source
 find_n = '<font color="grey" size="1">'
 last_find_n = ' files found'
 number_of_results = int(page_source[page_source.find(find_n) + len(find_n): page_source.find(last_find_n)])
-number_of_tabs = number_of_results//25
-if number_of_results % 25 > 0:
+number_of_tabs = number_of_results//100
+if number_of_results % 100 > 0:
     number_of_tabs += 1
 print(f'number of results: {number_of_results} \nnumber of tabs: {number_of_tabs}')
 
