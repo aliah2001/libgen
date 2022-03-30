@@ -29,9 +29,10 @@ search_url = 'search.php?req='
 number_of_results = '&res=100'
 tab_num = f'&page={last_tab+1}'
 ch = webdriver.ChromeOptions()
-op = ch.add_argument('--headless')
+op = ch.add_argument('start-minimized')
 # service=Service(ChromeDriverManager().download_and_install()[0]),
 browser = webdriver.Chrome(chrome_options=op)
+browser.minimize_window()
 browser.set_script_timeout(20000)
 browser.set_page_load_timeout(20000)
 for i in urls:
@@ -124,5 +125,6 @@ except FileNotFoundError:
     with open(f'search_results/{search_word}/{search_word}.txt', 'w+', encoding='utf8') as txt:
         for i in last_results:
             txt.writelines(str(i) + '\n')
+browser.close()
 print(f'results saved in search_results\\{search_word}\\')
 # we have results now
